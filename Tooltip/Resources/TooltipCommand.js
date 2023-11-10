@@ -81,7 +81,8 @@ class TooltipCommand extends Forguncy.Plugin.CommandBase {
         if (GlobalMap.get("pageEnentBind") == null) {
 
             // 绑定页面加载事件，只有弹出页面才会执行
-            Forguncy.Page.bind("pageDefaultDataLoaded", function () {
+            //Forguncy.Page.bind("pageDefaultDataLoaded", function () {
+            Forguncy.Page.bind("loaded", function () {
                 if (Forguncy.ForguncyData.pageInfo.isPopup) {
                     let popPageCount = GlobalMap.get("popPageCount");
                     if (popPageCount == null) {
@@ -94,7 +95,7 @@ class TooltipCommand extends Forguncy.Plugin.CommandBase {
                 } else {
                     return;
                 }
-            })
+            }, "*")
 
             // 给弹出页面绑定弹出页面关闭事件
             Forguncy.Page.bind("popupClosed", function () {
@@ -108,7 +109,7 @@ class TooltipCommand extends Forguncy.Plugin.CommandBase {
                     GlobalMap.set("popPageCount", popPageCount);
                 }
 
-            })
+            }, "*")
 
             GlobalMap.set("pageEnentBind", true);
         }
