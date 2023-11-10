@@ -33,7 +33,7 @@ namespace Tooltip
         public object ClassName { get; set; }
 
         [DisplayName("单元格位置")]
-        [FormulaProperty]
+        [FormulaProperty(OnlySupportCell = true)]
         [Required]
         [Description("通过选择单元格，或者单元格名称来设置")]
         public object TargetCell { get; set; }
@@ -69,7 +69,7 @@ namespace Tooltip
         public bool GetFocusedShow { get; set; } = false;
 
         [DisplayName("提示信息内容")]
-        [FormulaProperty]
+        [FormulaProperty(AcceptsReturn = true)]
         public object TooltipText { get; set; }
 
         [DisplayName("提示信息文字大小(单位：像素)")]
@@ -98,6 +98,11 @@ namespace Tooltip
             }
 
             if (propertyName == nameof(TargetCell))
+            {
+                return IsTargetCell;
+            }
+
+            if (propertyName == nameof(IsRepeater))
             {
                 return IsTargetCell;
             }

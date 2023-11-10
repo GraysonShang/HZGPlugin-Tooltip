@@ -6,16 +6,23 @@ class TooltipCommand extends Forguncy.Plugin.CommandBase {
 
     getParam() {
 
+        // 获取提示框配置
         this.isTargetCell = this.CommandParam.IsTargetCell;
-        this.isRepeater = this.CommandParam.IsRepeater;
 
-        this.className = this.CommandParam.ClassName;
-        this.resultClassName = this.evaluateFormula(this.className);
+        if (this.isTargetCell == true) {
+            this.targetCellFormula = this.CommandParam.TargetCell;
+            this.cellLocation = this.getCellLocation(this.targetCellFormula);
+            this.targetCell = Forguncy.Page.getCellByLocation(this.cellLocation);
 
-        this.targetCellFormula = this.CommandParam.TargetCell;
-        this.cellLocation = this.getCellLocation(this.targetCellFormula);
-        this.targetCell = Forguncy.Page.getCellByLocation(this.cellLocation);
+            this.isRepeater = this.CommandParam.IsRepeater;
+        } else {
+            this.className = this.CommandParam.ClassName;
+            this.resultClassName = this.evaluateFormula(this.className);
+        }
 
+        
+
+        // 获取提示框样式的配置
         this.position = this.CommandParam.TooltipPosition;
         this.positionX = this.CommandParam.TooltipPositionX;
         this.positionY = this.CommandParam.TooltipPositionY;
@@ -24,6 +31,7 @@ class TooltipCommand extends Forguncy.Plugin.CommandBase {
         this.focusShow = this.CommandParam.GetFocusedShow;
         this.minWidth = this.CommandParam.MinWidth;
 
+        // 获取文字以及文字样式的配置
         this.text = this.CommandParam.TooltipText;
         this.resultText = this.evaluateFormula(this.text);
         this.textFontSize = this.CommandParam.TextFontSize;
