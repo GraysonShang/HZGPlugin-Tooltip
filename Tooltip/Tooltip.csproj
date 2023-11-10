@@ -59,6 +59,6 @@
 		</Reference>
 	</ItemGroup>
 	<Target Name="PostBuild" AfterTargets="PostBuildEvent">
-		<Exec Command="&quot;D:\Users\GraysonShang\Desktop\特殊文件\forguncyPluginBuilder\bin\ForguncyPluginPackageTool.exe&quot; $(ProjectDir) &quot;D:\Program Files\Forguncy 8&quot; " />
+		<Exec Command="&quot;D:\Users\GraysonShang\Desktop\特殊文件\插件开发\forguncyPluginBuilder\bin\ForguncyPluginPackageTool.exe&quot; $(ProjectDir) &quot;D:\Program Files\Forguncy 8&quot; " />
 	</Target>
 </Project>
