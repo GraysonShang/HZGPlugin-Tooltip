@@ -6,6 +6,9 @@ class TooltipCommand extends Forguncy.Plugin.CommandBase {
 
     // 获取提示框配置
     getConfig() {
+        if (Forguncy.PageInfo.TooltipGlobalMap == undefined) {
+            Forguncy.PageInfo.TooltipGlobalMap = new Map();
+        }
         this.isTargetCell = this.CommandParam.IsTargetCell;
 
         if (this.isTargetCell == true) {
@@ -78,47 +81,47 @@ class TooltipCommand extends Forguncy.Plugin.CommandBase {
 
     // 活字格页面默认存在一个全局Map，弹出页面会创建一个子Map，执行命令只会获取对应页面的Map
     getCurrentPageMap() {
-        if (GlobalMap.get("pageEnentBind") == null) {
+        if (Forguncy.PageInfo.TooltipGlobalMap.get("pageEnentBind") == null) {
 
             // 绑定页面加载事件，只有弹出页面才会执行
             //Forguncy.Page.bind("pageDefaultDataLoaded", function () {
             Forguncy.Page.bind("loaded", function () {
                 if (Forguncy.ForguncyData.pageInfo.isPopup) {
-                    let popPageCount = GlobalMap.get("popPageCount");
+                    let popPageCount = Forguncy.PageInfo.TooltipGlobalMap.get("popPageCount");
                     if (popPageCount == null) {
                         popPageCount = 1;
                     } else {
                         popPageCount++;
                     }
-                    GlobalMap.set("popPageCount", popPageCount);
-                    GlobalMap.set("popPageMap" + popPageCount, new Map());
+                    Forguncy.PageInfo.TooltipGlobalMap.set("popPageCount", popPageCount);
+                    Forguncy.PageInfo.TooltipGlobalMap.set("popPageMap" + popPageCount, new Map());
                 } else {
-                    GlobalMap.clear();
+                    Forguncy.PageInfo.TooltipGlobalMap.clear();
                     return;
                 }
             }, "*")
 
             // 给弹出页面绑定弹出页面关闭事件
             Forguncy.Page.bind("popupClosed", function () {
-                let popPageCount = GlobalMap.get("popPageCount");
+                let popPageCount = Forguncy.PageInfo.TooltipGlobalMap.get("popPageCount");
 
                 if (popPageCount == 0) {
                     this.log("关闭弹出页面数据出现错误，可能会导致页面使用异常")
                 } else {
-                    GlobalMap.delete("popPageMap" + popPageCount);
+                    Forguncy.PageInfo.TooltipGlobalMap.delete("popPageMap" + popPageCount);
                     popPageCount--;
-                    GlobalMap.set("popPageCount", popPageCount);
+                    Forguncy.PageInfo.TooltipGlobalMap.set("popPageCount", popPageCount);
                 }
 
             }, "*")
 
-            GlobalMap.set("pageEnentBind", true);
+            Forguncy.PageInfo.TooltipGlobalMap.set("pageEnentBind", true);
         }
 
-        if (GlobalMap.get("popPageCount") == null || GlobalMap.get("popPageCount") == 0) {
-            return GlobalMap;
+        if (Forguncy.PageInfo.TooltipGlobalMap.get("popPageCount") == null || Forguncy.PageInfo.TooltipGlobalMap.get("popPageCount") == 0) {
+            return Forguncy.PageInfo.TooltipGlobalMap;
         } else {
-            return GlobalMap.get("popPageMap" + GlobalMap.get("popPageCount"));
+            return Forguncy.PageInfo.TooltipGlobalMap.get("popPageMap" + Forguncy.PageInfo.TooltipGlobalMap.get("popPageCount"));
         }
     }
 
@@ -153,7 +156,7 @@ class TooltipCommand extends Forguncy.Plugin.CommandBase {
 
     setTooltip() {
         let tooltips;
-        if (GlobalMap.get("popPageCount") != null && GlobalMap.get("popPageCount") != 0) {
+        if (Forguncy.PageInfo.TooltipGlobalMap.get("popPageCount") != null && Forguncy.PageInfo.TooltipGlobalMap.get("popPageCount") != 0) {
             // 若存在弹出页面，获取最后一个弹出页面对应的DOM元素
             let popPages = document.getElementsByClassName("FUI-dialog-outer");
             let lastPopPage = popPages[popPages.length - 1];

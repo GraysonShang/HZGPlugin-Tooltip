@@ -4,8 +4,7 @@
   ],
   "css": ["Resources/Tooltip.css"],
   "javascript": [
-    "Resources/TooltipCommand.js",
-    "Resources/globalVar.js"
+    "Resources/TooltipCommand.js"
   ],
   "serverApiAssembly": [],
   "image": "Resources/PluginLogo.png",
