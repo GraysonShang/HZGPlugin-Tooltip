@@ -140,7 +140,7 @@ class TooltipCommand extends Forguncy.Plugin.CommandBase {
 
             targetCellClassName = "__" + repeaterName;
         }
-        targetCellClassName = targetCellClassName + "__" + this.targetCellFormula.substring(1) + "__tooltip__";
+        targetCellClassName = targetCellClassName + "__" + this.targetCellFormula.substring(1).replace(/\./g, "_") + "__tooltip__";
 
 
         if (this.map.get(targetCellClassName) == null) {
@@ -392,7 +392,7 @@ class TooltipCommand extends Forguncy.Plugin.CommandBase {
         var style = document.createElement("style");
         var classname = '.' + this.className;
 
-        var change = document.createTextNode(classname + '::before{content: attr(tooltipText)}');
+        var change = document.createTextNode(classname + '::before{content: attr(data-tooltip)}');
 
         style.appendChild(change);
         tooltip.appendChild(style);
@@ -412,7 +412,7 @@ class TooltipCommand extends Forguncy.Plugin.CommandBase {
             this.log("设置类名为 " + this.className + " 的文本内容为 \n\"" + this.tooltipText + "\"");
         }
 
-        tooltip.setAttribute("tooltipText", this.tooltipText);
+        tooltip.setAttribute("data-tooltip", this.tooltipText);
     }
 
     // 设置展示内容文字大小
