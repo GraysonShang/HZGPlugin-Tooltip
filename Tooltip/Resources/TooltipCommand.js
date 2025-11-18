@@ -93,6 +93,7 @@ class TooltipCommand extends Forguncy.Plugin.CommandBase {
                     GlobalMap.set("popPageCount", popPageCount);
                     GlobalMap.set("popPageMap" + popPageCount, new Map());
                 } else {
+                    GlobalMap.clear();
                     return;
                 }
             }, "*")
@@ -384,6 +385,19 @@ class TooltipCommand extends Forguncy.Plugin.CommandBase {
         tooltip.appendChild(style);
     }
 
+    // 设置展示内容样式
+    setTooltipTextStyle(tooltip) {
+        this.getTextStyleConfig();
+
+        var style = document.createElement("style");
+        var classname = '.' + this.className;
+
+        var change = document.createTextNode(classname + '::before{content: attr(tooltipText)}');
+
+        style.appendChild(change);
+        tooltip.appendChild(style);
+    }
+
     // 设置展示内容
     setTooltipText(tooltip) {
         this.getTextStyleConfig();
@@ -397,14 +411,6 @@ class TooltipCommand extends Forguncy.Plugin.CommandBase {
         } else {
             this.log("设置类名为 " + this.className + " 的文本内容为 \n\"" + this.tooltipText + "\"");
         }
-
-        var style = document.createElement("style");
-        var classname = '.' + this.className;
-
-        var change = document.createTextNode(classname + '::before{content: attr(tooltipText)}');
-
-        style.appendChild(change);
-        tooltip.appendChild(style);
 
         tooltip.setAttribute("tooltipText", this.tooltipText);
     }
