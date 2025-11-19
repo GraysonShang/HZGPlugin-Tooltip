@@ -4,8 +4,7 @@
   ],
   "css": ["Resources/Tooltip.css"],
   "javascript": [
-    "Resources/TooltipCommand.js",
-    "Resources/globalVar.js"
+    "Resources/TooltipCommand.js"
   ],
   "serverApiAssembly": [],
   "image": "Resources/PluginLogo.png",
@@ -13,7 +12,7 @@
   "name": "文本框提示",
   "pluginType": "command",
   "guid": "e23dd9e8-61a8-49a5-88a2-5e3501e14924",
-  "version": "4.0.0.0",
+  "version": "5.0.0.0",
   "dependenceVersion": "8.0.105.0",
   "bundleJavaScript": true,
   "bundleCSS": true
