@@ -25,10 +25,24 @@ namespace Tooltip
             + "若展示数据依赖于当前行数据，请勾选本值以及使用单元格设置")]
         public bool IsRepeater { get; set; } = false;
 
+
+        [DisplayName("允许显示在图文列表外")]
+        [BoolProperty(IndentLevel = 2)]
+        [Description("这个功能会修改图文列表的样式，可能会影响原有的显示，\r\n"
+            + "若测试有问题，建议放弃该功能，设置不会出现在图文列表外部的提示")]
+        public bool IsOverflow { get; set; } = false;
+
+        [DisplayName("图文列表类名")]
+        [FormulaProperty]
+        [Required]
+        [Description("建议使用自定义的类名，比如 toolip_overflow ，\r\n"
+            + "若出现和页面其他类名重复，容易出现错误\r\n")]
+        public object RepeaterClassNameFormula { get; set; }
+
         [DisplayName("文本框类名")]
         [FormulaProperty]
         [Required]
-        [Description("建议使用自定义的类名，比如mytooltip,或者_tooltip_，\r\n"
+        [Description("建议使用自定义的类名，比如 mytooltip ,或者 _tooltip_ ，\r\n"
             + "若出现和页面其他类名重复，容易出现错误\r\n")]
         public object ClassNameFormula { get; set; }
 
@@ -124,6 +138,16 @@ namespace Tooltip
             if (propertyName == nameof(IsRepeater))
             {
                 return IsTargetCell;
+            }
+
+            if (propertyName == nameof(IsOverflow))
+            {
+                return IsRepeater;
+            }
+
+            if (propertyName == nameof(RepeaterClassNameFormula))
+            {
+                return IsOverflow;
             }
 
             if (propertyName == nameof(ClassNameFormula))

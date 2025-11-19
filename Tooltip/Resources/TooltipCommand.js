@@ -17,6 +17,13 @@ class TooltipCommand extends Forguncy.Plugin.CommandBase {
             this.targetCell = Forguncy.Page.getCellByLocation(this.targetCellLocation);
 
             this.isRepeater = this.CommandParam.IsRepeater;
+            if (this.isRepeater == true) {
+                this.isOverflow = this.CommandParam.IsOverflow;
+                if (this.isOverflow == true) {
+                    this.repeaterClassNameFormula = this.CommandParam.RepeaterClassNameFormula;
+                    this.repeaterClassName = this.evaluateFormula(this.repeaterClassNameFormula);
+                }
+            }
         } else {
             this.classNameFormula = this.CommandParam.ClassNameFormula;
             this.className = this.evaluateFormula(this.classNameFormula);
@@ -74,6 +81,20 @@ class TooltipCommand extends Forguncy.Plugin.CommandBase {
                 this.log("目标单元格不能为空");
             }
             this.setTargetCellClassName();
+        }
+
+        if (this.isRepeater == true) {
+            if (this.isOverflow == true) {
+
+                //this.setTooltipOverflowInRepeater();
+                //this.log(`图文列表${this.repeaterClassName}设置了溢出图文列表显示`);
+                if (Forguncy.PageInfo.TooltipGlobalMap.get(`${this.repeaterClassName}-repeaterOverflow`) == undefined ||
+                    Forguncy.PageInfo.TooltipGlobalMap.get(`${this.repeaterClassName}-repeaterOverflow`) == false) {
+                    this.setTooltipOverflowInRepeater();
+                    Forguncy.PageInfo.TooltipGlobalMap.set(`${this.repeaterClassName}-repeaterOverflow`, true)
+                    this.log(`图文列表${this.repeaterClassName}设置了溢出图文列表显示`);
+                }
+            }
         }
 
         this.setTooltip();
@@ -150,6 +171,7 @@ class TooltipCommand extends Forguncy.Plugin.CommandBase {
             this.map.set(targetCellClassName, 0);
             targetCellDom.classList.add(targetCellClassName);
         }
+
         this.className = targetCellClassName;
 
     }
@@ -188,6 +210,19 @@ class TooltipCommand extends Forguncy.Plugin.CommandBase {
                 this.setTooltipText(tooltip);
             }
         }
+    }
+
+    setTooltipOverflowInRepeater() {
+        let simplebar_maskDiv = document.querySelector(`.${this.repeaterClassName} .simplebar-mask`);
+        let simplebar_contentDiv = document.querySelector(`.${this.repeaterClassName} .simplebar-mask .simplebar-content`);
+        simplebar_maskDiv.style.setProperty('overflow', 'visible', 'important');
+        //simplebar_contentDiv.style.setProperty('overflow', 'visible', 'important');
+
+        var style = document.createElement("style");
+        var change = document.createTextNode(`.${this.repeaterClassName} .simplebar-mask .simplebar-content { overflow: visible !important;}`);
+        style.appendChild(change);
+
+        simplebar_contentDiv.appendChild(style);
     }
 
     setTooltipPosition(tooltip) {
