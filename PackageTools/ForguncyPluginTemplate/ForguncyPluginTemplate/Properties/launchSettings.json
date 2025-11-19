@@ -1,8 +1,0 @@
-{
-  "profiles": {
-    "ForguncyPluginTemplate": {
-      "commandName": "Executable",
-      "executablePath": "C:\\Program Files\\Forguncy 8\\Website\\designerBin\\Forguncy.exe"
-    }
-  }
-}
