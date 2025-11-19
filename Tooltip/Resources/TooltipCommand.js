@@ -4,125 +4,229 @@
 
 class TooltipCommand extends Forguncy.Plugin.CommandBase {
 
-    getParam() {
-
+    // 获取提示框配置
+    getConfig() {
+        if (Forguncy.PageInfo.TooltipGlobalMap == undefined) {
+            Forguncy.PageInfo.TooltipGlobalMap = new Map();
+        }
         this.isTargetCell = this.CommandParam.IsTargetCell;
-        this.isRepeater = this.CommandParam.IsRepeater;
 
-        this.className = this.CommandParam.ClassName;
-        this.resultClassName = this.evaluateFormula(this.className);
+        if (this.isTargetCell == true) {
+            this.targetCellFormula = this.CommandParam.TargetCellFormula;
+            this.targetCellLocation = this.getCellLocation(this.targetCellFormula);
+            this.targetCell = Forguncy.Page.getCellByLocation(this.targetCellLocation);
 
-        this.targetCellFormula = this.CommandParam.TargetCell;
-        this.cellLocation = this.getCellLocation(this.targetCellFormula);
-        this.targetCell = Forguncy.Page.getCellByLocation(this.cellLocation);
-
-        this.position = this.CommandParam.TooltipPosition;
-        this.positionX = this.CommandParam.TooltipPositionX;
-        this.positionY = this.CommandParam.TooltipPositionY;
-        this.color = this.CommandParam.TooltipColor;
-        this.resultColor = Forguncy.ConvertToCssColor(this.color);
-        this.focusShow = this.CommandParam.GetFocusedShow;
-        this.minWidth = this.CommandParam.MinWidth;
-
-        this.text = this.CommandParam.TooltipText;
-        this.resultText = this.evaluateFormula(this.text);
-        this.textFontSize = this.CommandParam.TextFontSize;
-        this.textFontColor = this.CommandParam.TextFontColor;
-        this.resultTextFontColor = Forguncy.ConvertToCssColor(this.textFontColor);
-    }
-    execute() {
-        if (typeof map.get("isBindEvent") === "undefined") {
-            Forguncy.Page.bind("PageDefaultDataLoaded", function () {
-                if (Forguncy.ForguncyData.pageInfo.isPopup) {
-                    console.log("弹出页面，新建一个map");
-                    map.set("popUpPage", 1);
-                    var oldMap = map;
+            this.isRepeater = this.CommandParam.IsRepeater;
+            if (this.isRepeater == true) {
+                this.isOverflow = this.CommandParam.IsOverflow;
+                if (this.isOverflow == true) {
+                    this.repeaterClassNameFormula = this.CommandParam.RepeaterClassNameFormula;
+                    this.repeaterClassName = this.evaluateFormula(this.repeaterClassNameFormula);
                 }
+            }
+        } else {
+            this.classNameFormula = this.CommandParam.ClassNameFormula;
+            this.className = this.evaluateFormula(this.classNameFormula);
+        }
+    }
 
-                map.clear();
-                console.log("map 已清空");
-                
-            },"*");
+    // 获取提示框样式的配置
+    getStyleConfig() {
+        this.position = this.CommandParam.TooltipPosition;
 
-            Forguncy.Page.bind("PopupClosed", function (arg1,arg2) {
-                map.clear();
-
-                console.log("弹出页面已关闭，map 已清空")
-            }, "*");
-
-            map.set("isBindEvent", true);
+        if (this.position == 0 || this.position == 3) {
+            // 当提示框位于目标上下位置时，获取水平位移
+            this.positionX = this.CommandParam.TooltipPositionX;
+        } else {
+            // 当提示框位于目标左右位置时，获取垂直位移
+            this.positionY = this.CommandParam.TooltipPositionY;
         }
 
-        this.getParam();
+
+        this.tooltipColor = this.CommandParam.TooltipColor;
+        this.tooltipCSSColor = Forguncy.ConvertToCssColor(this.tooltipColor);
+        this.isFocusShow = this.CommandParam.IsFocusedShow;
+        this.minWidth = this.CommandParam.MinWidth;
+
+        this.isFixedWidth = this.CommandParam.IsFixedWidth;
+
+        if (!this.isFixedWidth) {
+            this.maxWidth = this.CommandParam.MaxWidth;
+        }
+
+    }
+
+    // 获取文字以及文字样式的配置
+    getTextStyleConfig() {
+        this.tooltipTextFormula = this.CommandParam.TooltipTextFormula;
+        this.tooltipText = this.evaluateFormula(this.tooltipTextFormula);
+
+        //this.isMultiline = this.CommandParam.IsMultiline;
+
+        this.textFontSize = this.CommandParam.TextFontSize;
+        this.textFontColor = this.CommandParam.TextFontColor;
+        this.textFontCSSColor = Forguncy.ConvertToCssColor(this.textFontColor);
+    }
+
+
+    execute() {
+        this.getConfig();
+
+        this.map = this.getCurrentPageMap();
+
+
+        // 若是指定单元格，先构造Class，然后添加到对应目标单元格上
         if (this.isTargetCell == true) {
             if (this.targetCell == null) {
                 this.log("目标单元格不能为空");
             }
             this.setTargetCellClassName();
         }
+
+        if (this.isRepeater == true) {
+            if (this.isOverflow == true) {
+
+                //this.setTooltipOverflowInRepeater();
+                //this.log(`图文列表${this.repeaterClassName}设置了溢出图文列表显示`);
+                if (Forguncy.PageInfo.TooltipGlobalMap.get(`${this.repeaterClassName}-repeaterOverflow`) == undefined ||
+                    Forguncy.PageInfo.TooltipGlobalMap.get(`${this.repeaterClassName}-repeaterOverflow`) == false) {
+                    this.setTooltipOverflowInRepeater();
+                    Forguncy.PageInfo.TooltipGlobalMap.set(`${this.repeaterClassName}-repeaterOverflow`, true)
+                    this.log(`图文列表${this.repeaterClassName}设置了溢出图文列表显示`);
+                }
+            }
+        }
+
         this.setTooltip();
     }
 
+    // 活字格页面默认存在一个全局Map，弹出页面会创建一个子Map，执行命令只会获取对应页面的Map
+    getCurrentPageMap() {
+        if (Forguncy.PageInfo.TooltipGlobalMap.get("pageEnentBind") == null) {
+
+            // 绑定页面加载事件，只有弹出页面才会执行
+            //Forguncy.Page.bind("pageDefaultDataLoaded", function () {
+            Forguncy.Page.bind("loaded", function () {
+                if (Forguncy.ForguncyData.pageInfo.isPopup) {
+                    let popPageCount = Forguncy.PageInfo.TooltipGlobalMap.get("popPageCount");
+                    if (popPageCount == null) {
+                        popPageCount = 1;
+                    } else {
+                        popPageCount++;
+                    }
+                    Forguncy.PageInfo.TooltipGlobalMap.set("popPageCount", popPageCount);
+                    Forguncy.PageInfo.TooltipGlobalMap.set("popPageMap" + popPageCount, new Map());
+                } else {
+                    Forguncy.PageInfo.TooltipGlobalMap.clear();
+                    return;
+                }
+            }, "*")
+
+            // 给弹出页面绑定弹出页面关闭事件
+            Forguncy.Page.bind("popupClosed", function () {
+                let popPageCount = Forguncy.PageInfo.TooltipGlobalMap.get("popPageCount");
+
+                if (popPageCount == 0) {
+                    this.log("关闭弹出页面数据出现错误，可能会导致页面使用异常")
+                } else {
+                    Forguncy.PageInfo.TooltipGlobalMap.delete("popPageMap" + popPageCount);
+                    popPageCount--;
+                    Forguncy.PageInfo.TooltipGlobalMap.set("popPageCount", popPageCount);
+                }
+
+            }, "*")
+
+            Forguncy.PageInfo.TooltipGlobalMap.set("pageEnentBind", true);
+        }
+
+        if (Forguncy.PageInfo.TooltipGlobalMap.get("popPageCount") == null || Forguncy.PageInfo.TooltipGlobalMap.get("popPageCount") == 0) {
+            return Forguncy.PageInfo.TooltipGlobalMap;
+        } else {
+            return Forguncy.PageInfo.TooltipGlobalMap.get("popPageMap" + Forguncy.PageInfo.TooltipGlobalMap.get("popPageCount"));
+        }
+    }
+
     setTargetCellClassName() {
-        this.targetCellid = this.targetCell._pageCell.id + "_div";
-        this.targetCellDom = document.getElementById(this.targetCellid);
-        this.repeaterName = "";
-        this.targetCellClassName = "";
+        let targetCellid = this.targetCell._pageCell.id + "_div";
+        let targetCellDom = document.getElementById(targetCellid);
+        let repeaterName = "";
+        let targetCellClassName = "";
         if (this.isRepeater) {
-            if (typeof map.get("repeaterContainter") === "undefined") {
-                map.set("repeaterContainter", 1);
-                this.repeaterName = "repeater" + 1;
+            let repeaterIndex = this.map.get("repeaterContainter")
+
+            if (repeaterIndex == null) {
+                repeaterIndex = 1;
             } else {
-                var repeaterIndex = map.get("repeaterContainter");
                 repeaterIndex++;
-                this.repeaterName = "repeater" + repeaterIndex;
-                map.set("repeaterContainter", repeaterIndex);
             }
-            this.targetCellClassName = "__" + this.repeaterName;
+            repeaterName = "repeater" + repeaterIndex;
+            this.map.set("repeaterContainter", repeaterIndex);
+
+            targetCellClassName = "__" + repeaterName;
         }
-        this.targetCellClassName = this.targetCellClassName + "__" + this.targetCellFormula.substring(1) + "__tooltip__";
-        if (typeof map.get(this.targetCellClassName) === "undefined") {
-            map.set(this.targetCellClassName, 0);
-            this.targetCellDom.classList.add(this.targetCellClassName);
+        targetCellClassName = targetCellClassName + "__" + this.targetCellFormula.substring(1).replace(/\./g, "_") + "__tooltip__";
+
+
+        if (this.map.get(targetCellClassName) == null) {
+            this.map.set(targetCellClassName, 0);
+            targetCellDom.classList.add(targetCellClassName);
         }
-        this.resultClassName = this.targetCellClassName;
-        
+
+        this.className = targetCellClassName;
+
     }
 
     setTooltip() {
-        let tooltips = document.getElementsByClassName(this.resultClassName);
+        let tooltips;
+        if (Forguncy.PageInfo.TooltipGlobalMap.get("popPageCount") != null && Forguncy.PageInfo.TooltipGlobalMap.get("popPageCount") != 0) {
+            // 若存在弹出页面，获取最后一个弹出页面对应的DOM元素
+            let popPages = document.getElementsByClassName("FUI-dialog-outer");
+            let lastPopPage = popPages[popPages.length - 1];
+            tooltips = lastPopPage.getElementsByClassName(this.className);
+        } else {
+            tooltips = document.getElementsByClassName(this.className);
+        }
         if (tooltips.length == 0) {
-            this.log("未找到类名为 " + this.resultClassName + " 的元素");
+            this.log("未找到类名为 " + this.className + " 的元素");
             return;
         }
 
-        if (typeof map.get(this.resultClassName) === "undefined" ||
-            map.get(this.resultClassName) == 0) {
+        if (this.map.get(this.className) == null ||
+            this.map.get(this.className) == 0) {
             for (let i = 0; i < tooltips.length; i++) {
                 let tooltip = tooltips[i];
                 tooltip.classList.add("__tooltip__");
                 this.setTooltipPosition(tooltip);
                 this.setTooltipText(tooltip);
+
+                this.setTooltipTextFontSize(tooltip);
+                this.setTooltipTextFontColor(tooltip);
             }
 
-            this.setTooltipPositionTranslate();
-            this.setTooltipColor();
-            this.setFocusedShow();
-            this.setTooltipMinWidth();
-            this.setTooltipTextFontSize();
-            this.setTooltipTextFontColor();
-
-            map.set(this.resultClassName, 1);
+            this.map.set(this.className, 1);
         } else {
             for (let i = 0; i < tooltips.length; i++) {
                 let tooltip = tooltips[i];
                 this.setTooltipText(tooltip);
             }
         }
-        
+    }
+
+    setTooltipOverflowInRepeater() {
+        let simplebar_maskDiv = document.querySelector(`.${this.repeaterClassName} .simplebar-mask`);
+        let simplebar_contentDiv = document.querySelector(`.${this.repeaterClassName} .simplebar-mask .simplebar-content`);
+        simplebar_maskDiv.style.setProperty('overflow', 'visible', 'important');
+        //simplebar_contentDiv.style.setProperty('overflow', 'visible', 'important');
+
+        var style = document.createElement("style");
+        var change = document.createTextNode(`.${this.repeaterClassName} .simplebar-mask .simplebar-content { overflow: visible !important;}`);
+        style.appendChild(change);
+
+        simplebar_contentDiv.appendChild(style);
     }
 
     setTooltipPosition(tooltip) {
+        this.getStyleConfig();
         tooltip.classList.remove("__top__", "__left__", "__right__", "__bottom__");
         switch (this.position) {
             case 0:
@@ -141,13 +245,23 @@ class TooltipCommand extends Forguncy.Plugin.CommandBase {
                 alert("position error");
                 break;
         }
+        if (this.position >= 0 && this.position <= 3) {
+            this.setTooltipPositionTranslate(tooltip);
+            this.setFocusedShow(tooltip);
+            this.setTooltipMinWidth(tooltip);
+            //this.setTooltipMaxWidth(tooltip);
+            this.setTooltipColor(tooltip);
+        }
     }
 
-    setTooltipPositionTranslate() {
+    // 设置相对位移
+    setTooltipPositionTranslate(tooltip) {
+
+        var style = document.createElement("style");
+        var classname = '.' + this.className;
+
         if (this.position == 0 || this.position == 3) {
             if (this.positionX == 50) return;
-            var style = document.createElement("style");
-            var classname = '.' + this.resultClassName;
             var changeBefore = document.createTextNode(classname + '.__top__::before,'
                 + classname + '.__bottom__::before'
                 + '{left: ' + this.positionX + '%;}');
@@ -156,12 +270,9 @@ class TooltipCommand extends Forguncy.Plugin.CommandBase {
                 + '{left: ' + this.positionX + '%;}');
             style.appendChild(changeBefore);
             style.appendChild(changeAfter);
-            document.body.appendChild(style);
         }
         else {
             if (this.positionY == 50) return;
-            var style = document.createElement("style");
-            var classname = '.' + this.resultClassName;
             var changeBefore = document.createTextNode(classname + '.__left__::before,'
                 + classname + '.__right__::before'
                 + '{top: ' + this.positionY + '%;}');
@@ -170,107 +281,240 @@ class TooltipCommand extends Forguncy.Plugin.CommandBase {
                 + '{top: ' + this.positionY + '%;}');
             style.appendChild(changeBefore);
             style.appendChild(changeAfter);
-            document.body.appendChild(style);
         }
-    }
 
-    // 设置颜色
-    setTooltipColor() {
-        if (typeof this.resultColor === "undefined") return;
-        this.log("Color: " + this.resultColor);
-        var style = document.createElement("style");
-        var classname = '.' + this.resultClassName;
-        var change = document.createTextNode(classname + '::before{background-color: ' + this.resultColor + ';}');
-        var changeTop = document.createTextNode(classname + '.__top__::after{border-top-color:' + this.resultColor + ';}');
-        var changeLeft = document.createTextNode(classname + '.__left__::after{border-left-color:' + this.resultColor + ';}');
-        var changeRight = document.createTextNode(classname + '.__right__::after{border-right-color:' + this.resultColor + ';}');
-        var changeBottom = document.createTextNode(classname + '.__bottom__::after{border-bottom-color:' + this.resultColor + ';}');
-
-        style.appendChild(change);
-        style.appendChild(changeTop);
-        style.appendChild(changeLeft);
-        style.appendChild(changeRight);
-        style.appendChild(changeBottom);
-        document.body.appendChild(style);
+        tooltip.appendChild(style);
     }
 
     // 设置获取焦点时显示
-    setFocusedShow() {
-        if (this.focusShow) {
+    setFocusedShow(tooltip) {
+
+        var style = document.createElement("style");
+        var classname = '.' + this.className;
+
+        if (this.isFocusShow) {
             this.log("focus get");
-            var style = document.createElement("style");
-            var classname = '.' + this.resultClassName;
             var changeBefore = document.createTextNode(classname + ':focus-within::before'
-                + '{display: inline-block;}');
+                + '{display: block;}');
             var changeAfter = document.createTextNode(classname + ':focus-within::after'
                 + '{display: inline-block;}');
             style.appendChild(changeBefore);
             style.appendChild(changeAfter);
-            document.body.appendChild(style);
         }
         else {
             this.log("focus none");
-            var style = document.createElement("style");
-            var classname = '.' + this.resultClassName;
             var changeBefore = document.createTextNode(classname + ':focus-within::before'
                 + '{display: none;}');
             var changeAfter = document.createTextNode(classname + ':focus-within::after'
                 + '{display: none;}');
             style.appendChild(changeBefore);
             style.appendChild(changeAfter);
-            document.body.appendChild(style);
         }
+
+        tooltip.appendChild(style);
     }
 
-    setTooltipMinWidth() {
+    // 设置展示Tooltip最小宽度
+    setTooltipMinWidth(tooltip) {
+        //if (this.minWidth == 200) return;
         this.log("min-width: " + this.minWidth)
         var style = document.createElement("style");
-        var classname = '.' + this.resultClassName;
-        var change = document.createTextNode(classname + '::before{min-width: ' + this.minWidth + 'px;}');
+        var classname = '.' + this.className;
+
+        var change;
+
+        switch (this.position) {
+            case 0:
+                change = document.createTextNode(classname + '.__top__::before{min-width: ' + this.minWidth + 'px;}');
+                break;
+            case 1:
+                change = document.createTextNode(classname + '.__left__::before{min-width: ' + this.minWidth + 'px;}');
+                break;
+            case 2:
+                change = document.createTextNode(classname + '.__right__::before{min-width: ' + this.minWidth + 'px;}');
+                break;
+            case 3:
+                change = document.createTextNode(classname + '.__bottom__::before{min-width: ' + this.minWidth + 'px;}');
+                break;
+            default:
+                alert("min-width error");
+                break;
+        }
 
         style.appendChild(change);
-        document.body.appendChild(style);
+
+        tooltip.appendChild(style);
+    }
+
+    // 设置展示Tooltip最大宽度
+    setTooltipMaxWidth(tooltip) {
+        var maxWidth = 200;
+        if (this.isFixedWidth) {
+            maxWidth = this.minWidth
+
+        } else {
+            maxWidth = this.maxWidth
+        }
+        this.log("max-width: " + maxWidth)
+
+        var style = document.createElement("style");
+        var classname = '.' + this.className;
+
+        var change;
+
+        switch (this.position) {
+            case 0:
+                change = document.createTextNode(classname + '.__top__::before{max-width: ' + maxWidth + 'px;}');
+                break;
+            case 1:
+                change = document.createTextNode(classname + '.__left__::before{max-width: ' + maxWidth + 'px;}');
+                break;
+            case 2:
+                change = document.createTextNode(classname + '.__right__::before{max-width: ' + maxWidth + 'px;}');
+                break;
+            case 3:
+                change = document.createTextNode(classname + '.__bottom__::before{max-width: ' + maxWidth + 'px;}');
+                break;
+            default:
+                alert("max-width error");
+                break;
+        }
+
+        style.appendChild(change);
+
+        tooltip.appendChild(style);
+    }
+
+    // 设置Tooltip颜色
+    setTooltipColor(tooltip) {
+        if (this.tooltipCSSColor == null) return;
+        this.log("Color: " + this.tooltipCSSColor);
+
+        var style = document.createElement("style");
+        var classname = '.' + this.className;
+
+        var changeBackground;
+        var positionChange;
+        switch (this.position) {
+            case 0:
+                positionChange = document.createTextNode(classname + '.__top__::after{border-top-color:' + this.tooltipCSSColor + ';}');
+                changeBackground = document.createTextNode(classname + '.__top__::before{background-color: ' + this.tooltipCSSColor + ';}');
+                break;
+            case 1:
+                positionChange = document.createTextNode(classname + '.__left__::after{border-left-color:' + this.tooltipCSSColor + ';}');
+                changeBackground = document.createTextNode(classname + '.__left__::before{background-color: ' + this.tooltipCSSColor + ';}');
+                break;
+            case 2:
+                positionChange = document.createTextNode(classname + '.__right__::after{border-right-color:' + this.tooltipCSSColor + ';}');
+                changeBackground = document.createTextNode(classname + '.__right__::before{background-color: ' + this.tooltipCSSColor + ';}');
+                break;
+            case 3:
+                positionChange = document.createTextNode(classname + '.__bottom__::after{border-bottom-color:' + this.tooltipCSSColor + ';}');
+                changeBackground = document.createTextNode(classname + '.__bottom__::before{background-color: ' + this.tooltipCSSColor + ';}');
+                break;
+            default:
+                alert("TooltipColor error");
+                break;
+        }
+
+        style.appendChild(changeBackground);
+        style.appendChild(positionChange);
+
+        tooltip.appendChild(style);
+    }
+
+    // 设置展示内容样式
+    setTooltipTextStyle(tooltip) {
+        this.getTextStyleConfig();
+
+        var style = document.createElement("style");
+        var classname = '.' + this.className;
+
+        var change = document.createTextNode(classname + '::before{content: attr(data-tooltip)}');
+
+        style.appendChild(change);
+        tooltip.appendChild(style);
     }
 
     // 设置展示内容
     setTooltipText(tooltip) {
+        this.getTextStyleConfig();
         if (this.isTargetCell) {
             if (this.isRepeater) {
-                this.log("图文列表中，设置单元格为 " + this.targetCellFormula + " 的文本内容为 \"" + this.resultText + "\"");
+                this.log("图文列表中，设置单元格为 " + this.targetCellFormula + " 的文本内容为 \"" + this.tooltipText + "\"");
             } else {
-                this.log("设置单元格为 " + this.targetCellFormula + " 的文本内容为 \"" + this.resultText + "\"");
+                this.log("设置单元格为 " + this.targetCellFormula + " 的文本内容为 \n\"" + this.tooltipText + "\"");
             }
-            
+
         } else {
-            this.log("设置类名为 " + this.resultClassName + " 的文本内容为 \"" + this.resultText + "\"");
+            this.log("设置类名为 " + this.className + " 的文本内容为 \n\"" + this.tooltipText + "\"");
         }
 
-        tooltip.setAttribute("tooltipText", this.resultText);
+        tooltip.setAttribute("data-tooltip", this.tooltipText);
     }
 
     // 设置展示内容文字大小
     setTooltipTextFontSize(tooltip) {
-        if (typeof this.textFontSize === "undefined") return;
+        //if (this.textFontSize == 14.67) return;
         this.log("Tooltip Text Font-Size: " + this.textFontSize + "px");
+
         var style = document.createElement("style");
-        var classname = '.' + this.resultClassName;
-        var change = document.createTextNode(classname + '::before{font-size: ' + this.textFontSize + 'px;}');
+        var classname = '.' + this.className;
+
+        var change;
+        switch (this.position) {
+            case 0:
+                change = document.createTextNode(classname + '.__top__::before{font-size: ' + this.textFontSize + 'px;}');
+                break;
+            case 1:
+                change = document.createTextNode(classname + '.__left__::before{font-size: ' + this.textFontSize + 'px;}');
+                break;
+            case 2:
+                change = document.createTextNode(classname + '.__right__::before{font-size: ' + this.textFontSize + 'px;}');
+                break;
+            case 3:
+                change = document.createTextNode(classname + '.__bottom__::before{font-size: ' + this.textFontSize + 'px;}');
+                break;
+            default:
+                alert("TooltipTextFontSize error");
+                break;
+        }
 
         style.appendChild(change);
-        document.body.appendChild(style);
+        tooltip.appendChild(style);
     }
 
     // 设置展示内容文字颜色
     setTooltipTextFontColor(tooltip) {
-        if (typeof this.textFontColor === "undefined") return;
-        this.log("Tooltip Text Font-Color: " + this.resultTextFontColor);
+        if (this.textFontColor == null) return;
+        this.log("Tooltip Text Font-Color: " + this.textFontColor);
+
         var style = document.createElement("style");
-        var classname = '.' + this.resultClassName;
-        var change = document.createTextNode(classname + '::before{color: ' + this.resultTextFontColor + ';}');
+        var classname = '.' + this.className;
+
+        var change;
+        switch (this.position) {
+            case 0:
+                change = document.createTextNode(classname + '.__top__::before{color: ' + this.textFontCSSColor + ';}');
+                break;
+            case 1:
+                change = document.createTextNode(classname + '.__left__::before{color: ' + this.textFontCSSColor + ';}');
+                break;
+            case 2:
+                change = document.createTextNode(classname + '.__right__::before{color: ' + this.textFontCSSColor + ';}');
+                break;
+            case 3:
+                change = document.createTextNode(classname + '.__bottom__::before{color: ' + this.textFontCSSColor + ';}');
+                break;
+            default:
+                alert("TooltipTextFontColor error");
+                break;
+        }
 
         style.appendChild(change);
-        document.body.appendChild(style);
+        tooltip.appendChild(style);
     }
+
 }
 
 Forguncy.Plugin.CommandFactory.registerCommand("Tooltip.TooltipCommand, Tooltip", TooltipCommand);
