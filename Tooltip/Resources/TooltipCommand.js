@@ -92,7 +92,7 @@ class TooltipCommand extends Forguncy.Plugin.CommandBase {
                     Forguncy.PageInfo.TooltipGlobalMap.get(`${this.repeaterClassName}-repeaterOverflow`) == false) {
                     this.setTooltipOverflowInRepeater();
                     Forguncy.PageInfo.TooltipGlobalMap.set(`${this.repeaterClassName}-repeaterOverflow`, true)
-                    this.log(`图文列表${this.repeaterClassName}设置了溢出图文列表显示`);
+                    this.log(`图文列表${this.repeaterClassName}设置了溢出显示`);
                 }
             }
         }
