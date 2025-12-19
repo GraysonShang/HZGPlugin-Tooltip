@@ -59,6 +59,6 @@
 		</Reference>
 	</ItemGroup>
 	<Target Name="PostBuild" AfterTargets="PostBuildEvent">
-		<Exec Command="&quot;..\PackageTools\bin\ForguncyPluginPackageTool.exe&quot; $(ProjectDir) &quot;D:\ForguncyHistory\8.0.105.0\Website\designerBin\Forguncy.exe&quot; " />
+		<Exec Command="&quot;..\PackageTools\bin\ForguncyPluginPackageTool.exe&quot; &quot;$(ProjectDir).&quot; &quot;$(ProjectDir)$(OutputPath)$(AssemblyName).dll&quot; $(ConfigurationName)" />
 	</Target>
 </Project>
