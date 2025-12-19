@@ -78,17 +78,6 @@ namespace Tooltip
         [IntProperty(Min = 1, Max = 2000)]
         public int MinWidth { get; set; } = 200;
 
-        //[DisplayName("设置固定宽度")]
-        //[BoolProperty(IndentLevel = 1)]
-        //[Description("开启固定宽度之后，最大宽度将等于最小宽度")]
-        //public bool IsFixedWidth { get; set; } = false;
-
-        //[DisplayName("提示框最大宽度(单位：像素)")]
-        //[Description("提示框宽度自适应，最大宽度保证了当文字长度到达限制会换行\r\n"
-        //    + "最小值为1，最大值为2000")]
-        //[IntProperty(Min = 1, Max = 2000)]
-        //public int MaxWidth { get; set; } = 200;
-
         [DisplayName("获取焦点时提示")]
         [Description("获取焦点时会一直提示")]
         [BoolProperty]
@@ -99,10 +88,6 @@ namespace Tooltip
         public object TooltipTextFormula { get; set; }
 
 
-        //[DisplayName("是否多行显示数据")]
-        //[BoolProperty(IndentLevel = 1)]
-        //[Description("若想要对提示的问题换行展示请勾选此项，否则换行符会以空格展示")]
-        //public bool IsMultiline { get; set; } = false;
 
         [DisplayName("提示信息文字大小(单位：像素)")]
         [Description("最小值为1.00，最大值为200.00，默认大小为14.67px")]
@@ -142,23 +127,20 @@ namespace Tooltip
 
             if (propertyName == nameof(IsOverflow))
             {
-                return IsRepeater;
+                //return IsRepeater;
+                return false;
             }
 
             if (propertyName == nameof(RepeaterClassNameFormula))
             {
-                return IsOverflow;
+                //return IsOverflow;
+                return false;
             }
 
             if (propertyName == nameof(ClassNameFormula))
             {
                 return !IsTargetCell;
             }
-
-            //if (propertyName == nameof(MaxWidth))
-            //{
-            //    return !IsFixedWidth;
-            //}
 
             return base.GetDesignerPropertyVisible(propertyName, commandScope);
         }

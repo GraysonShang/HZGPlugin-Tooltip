@@ -90,9 +90,13 @@ class TooltipCommand extends Forguncy.Plugin.CommandBase {
                 //this.log(`图文列表${this.repeaterClassName}设置了溢出图文列表显示`);
                 if (Forguncy.PageInfo.TooltipGlobalMap.get(`${this.repeaterClassName}-repeaterOverflow`) == undefined ||
                     Forguncy.PageInfo.TooltipGlobalMap.get(`${this.repeaterClassName}-repeaterOverflow`) == false) {
-                    this.setTooltipOverflowInRepeater();
+                    if (this.setTooltipOverflowInRepeater()) {
+                        this.log(`图文列表${this.repeaterClassName}设置了溢出显示`);
+                    } else {
+                        this.log(`当前图文列表${this.repeaterClassName}溢出模式下，不能设置溢出显示`);
+                    }
                     Forguncy.PageInfo.TooltipGlobalMap.set(`${this.repeaterClassName}-repeaterOverflow`, true)
-                    this.log(`图文列表${this.repeaterClassName}设置了溢出显示`);
+                    
                 }
             }
         }
@@ -201,6 +205,10 @@ class TooltipCommand extends Forguncy.Plugin.CommandBase {
 
                 this.setTooltipTextFontSize(tooltip);
                 this.setTooltipTextFontColor(tooltip);
+                
+                // 添加碰撞检测事件监听器
+                this.addCollisionDetectionEvents(tooltip);
+                this.log("添加了碰撞检测")
             }
 
             this.map.set(this.className, 1);
@@ -208,13 +216,290 @@ class TooltipCommand extends Forguncy.Plugin.CommandBase {
             for (let i = 0; i < tooltips.length; i++) {
                 let tooltip = tooltips[i];
                 this.setTooltipText(tooltip);
+                
+                // 添加碰撞检测事件监听器（如果还没有添加）
+                if (!tooltip.__collisionDetectionAdded) {
+                    this.addCollisionDetectionEvents(tooltip);
+                }
             }
         }
+    }
+    
+    // 添加碰撞检测事件监听器
+    addCollisionDetectionEvents(tooltip) {
+        // 标记已添加事件监听器
+        tooltip.__collisionDetectionAdded = true;
+        
+        // 添加mouseover和focus事件监听器
+        tooltip.addEventListener('mouseover', () => {
+            this.collisionDetection(tooltip);
+        });
+        
+        tooltip.addEventListener('focus', () => {
+            this.collisionDetection(tooltip);
+        });
+        
+        // 监听窗口大小变化，重新检测碰撞
+        window.addEventListener('resize', () => {
+            this.collisionDetection(tooltip);
+        });
+    }
+    
+    // 碰撞检测逻辑
+    collisionDetection(tooltip) {
+        // 获取原始位置设置
+        const originalPosition = this.position;
+        const originalPositionX = this.positionX;
+        const originalPositionY = this.positionY;
+        
+        // 创建临时元素来模拟tooltip的位置和大小
+        const tempTooltip = document.createElement('div');
+        tempTooltip.style.position = 'fixed';
+        tempTooltip.style.visibility = 'hidden';
+        tempTooltip.style.pointerEvents = 'none';
+        tempTooltip.style.backgroundColor = this.tooltipCSSColor || 'rgba(0, 0, 0, 0.8)';
+        tempTooltip.style.color = this.textFontCSSColor || 'white';
+        tempTooltip.style.fontSize = this.textFontSize + 'px';
+        tempTooltip.style.padding = '10px';
+        tempTooltip.style.borderRadius = '5px';
+        tempTooltip.style.minWidth = this.minWidth + 'px';
+        if (!this.isFixedWidth) {
+            tempTooltip.style.maxWidth = this.maxWidth + 'px';
+        }
+        tempTooltip.textContent = tooltip.getAttribute('data-tooltip');
+        
+        document.body.appendChild(tempTooltip);
+        
+        // 获取tooltip元素的位置信息
+        const tooltipRect = tooltip.getBoundingClientRect();
+        const tempRect = tempTooltip.getBoundingClientRect();
+        
+        // 获取视口尺寸
+        const viewportWidth = window.innerWidth;
+        const viewportHeight = window.innerHeight;
+        
+        // 根据原始位置动态生成优先级顺序：先检查相对位置，然后检查其他位置
+        let positions = [];
+        
+        // 定义位置映射
+        const positionMap = {
+            0: { name: '__top__', opposite: 3, oppositeName: '__bottom__' },
+            1: { name: '__left__', opposite: 2, oppositeName: '__right__' },
+            2: { name: '__right__', opposite: 1, oppositeName: '__left__' },
+            3: { name: '__bottom__', opposite: 0, oppositeName: '__top__' }
+        };
+        
+        // 获取原始位置信息
+        const originalPosInfo = positionMap[originalPosition];
+        
+        // 构建优先级顺序：
+        // 1. 原始位置（如果可用）
+        // 2. 相对位置（左→右，右→左，上→下，下→上）
+        // 3. 其他位置
+        positions.push({
+            name: originalPosInfo.name,
+            position: originalPosition
+        });
+        
+        positions.push({
+            name: originalPosInfo.oppositeName,
+            position: originalPosInfo.opposite
+        });
+        
+        // 添加剩余位置
+        Object.keys(positionMap).forEach(pos => {
+            const posNum = parseInt(pos);
+            if (posNum !== originalPosition && posNum !== originalPosInfo.opposite) {
+                positions.push({
+                    name: positionMap[posNum].name,
+                    position: posNum
+                });
+            }
+        });
+        
+        // 找到最佳位置
+        let bestPosition = originalPosition;
+        let bestPositionName = '';
+        let bestScore = Infinity;
+        
+        for (const pos of positions) {
+            // 计算临时元素在当前位置的坐标
+            let left, top;
+            
+            switch (pos.name) {
+                case '__top__':
+                    left = tooltipRect.left + (tooltipRect.width * (this.positionX || 50) / 100) - (tempRect.width / 2);
+                    top = tooltipRect.top - tempRect.height - 10;
+                    break;
+                case '__right__':
+                    left = tooltipRect.right + 10;
+                    top = tooltipRect.top + (tooltipRect.height * (this.positionY || 50) / 100) - (tempRect.height / 2);
+                    break;
+                case '__bottom__':
+                    left = tooltipRect.left + (tooltipRect.width * (this.positionX || 50) / 100) - (tempRect.width / 2);
+                    top = tooltipRect.bottom + 10;
+                    break;
+                case '__left__':
+                    left = tooltipRect.left - tempRect.width - 10;
+                    top = tooltipRect.top + (tooltipRect.height * (this.positionY || 50) / 100) - (tempRect.height / 2);
+                    break;
+            }
+            
+            // 更新临时元素位置
+            tempTooltip.style.left = left + 'px';
+            tempTooltip.style.top = top + 'px';
+            
+            // 重新获取临时元素的位置信息
+            const updatedTempRect = tempTooltip.getBoundingClientRect();
+            
+            // 检查是否超出视口
+            const isWithinViewport = 
+                updatedTempRect.left >= 0 &&
+                updatedTempRect.right <= viewportWidth &&
+                updatedTempRect.top >= 0 &&
+                updatedTempRect.bottom <= viewportHeight;
+            
+            // 检查是否被其他元素遮挡
+            const isVisible = this.isElementVisible(updatedTempRect, tooltip);
+            
+            // 计算位置得分
+            let score = 0;
+            if (isWithinViewport && isVisible) {
+                // 如果在视口内且可见，给一个较低的基础分数
+                score = 0;
+                // 如果是原始位置，分数更低
+                if (pos.position === originalPosition) {
+                    score = -10;
+                }
+                // 如果是相对位置，分数次之
+                const originalPosInfo = positionMap[originalPosition];
+                if (pos.position === originalPosInfo.opposite) {
+                    score = -5;
+                }
+            } else {
+                // 计算超出视口的程度
+                const viewportOutOfBounds = 
+                    Math.abs(Math.min(0, left)) +
+                    Math.abs(Math.max(0, left + tempRect.width - viewportWidth)) +
+                    Math.abs(Math.min(0, top)) +
+                    Math.abs(Math.max(0, top + tempRect.height - viewportHeight));
+                
+                // 计算被遮挡的程度
+                const occlusionScore = this.calculateOcclusionScore(updatedTempRect, tooltip);
+                
+                // 总得分
+                score = viewportOutOfBounds + occlusionScore;
+            }
+            
+            // 更新最佳位置
+            if (score < bestScore) {
+                bestScore = score;
+                bestPosition = pos.position;
+                bestPositionName = pos.name;
+            }
+        }
+        
+        // 移除临时元素
+        document.body.removeChild(tempTooltip);
+        
+        // 如果需要改变位置，更新tooltip的类名
+        if (bestPosition !== originalPosition) {
+            // 移除所有位置类名
+            tooltip.classList.remove('__top__', '__left__', '__right__', '__bottom__');
+            // 添加最佳位置类名
+            tooltip.classList.add(bestPositionName);
+            
+            // 临时更新位置设置，以便重新应用位移
+            const oldPosition = this.position;
+            this.position = bestPosition;
+            
+            // 重新设置位移
+            if (!tooltip["__" + bestPositionName + "styleAdded"]) {
+                this.setTooltipPositionTranslate(tooltip);
+                this.setTooltipColor(tooltip);
+                this.setTooltipMinWidth(tooltip);
+                tooltip["__" + bestPositionName + "styleAdded"] = true;
+            }
+            
+            
+            // 恢复原始位置设置
+            this.position = oldPosition;
+        }
+    }
+    
+    // 检查元素是否可见（不被父容器遮挡）
+    isElementVisible(elementRect, tooltipElement) {
+        // 获取tooltip的所有父元素
+        let parent = tooltipElement.parentElement;
+        while (parent && parent !== document.body) {
+            // 检查父元素是否有overflow属性导致遮挡
+            const overflow = getComputedStyle(parent).overflow;
+            const overflowX = getComputedStyle(parent).overflowX;
+            const overflowY = getComputedStyle(parent).overflowY;
+            
+            // 如果父元素有overflow属性且不是visible，检查是否遮挡
+            if ((overflow !== 'visible' && overflow !== 'unset') ||
+                (overflowX !== 'visible' && overflowX !== 'unset') ||
+                (overflowY !== 'visible' && overflowY !== 'unset')) {
+                
+                const parentRect = parent.getBoundingClientRect();
+                
+                // 检查tooltip是否超出父元素边界
+                if (elementRect.left < parentRect.left ||
+                    elementRect.right > parentRect.right ||
+                    elementRect.top < parentRect.top ||
+                    elementRect.bottom > parentRect.bottom) {
+                    return false;
+                }
+            }
+            
+            parent = parent.parentElement;
+        }
+        
+        return true;
+    }
+    
+    // 计算元素被遮挡的程度
+    calculateOcclusionScore(elementRect, tooltipElement) {
+        let occlusionScore = 0;
+        
+        // 获取tooltip的所有父元素
+        let parent = tooltipElement.parentElement;
+        while (parent && parent !== document.body) {
+            // 检查父元素是否有overflow属性导致遮挡
+            const overflow = getComputedStyle(parent).overflow;
+            const overflowX = getComputedStyle(parent).overflowX;
+            const overflowY = getComputedStyle(parent).overflowY;
+            
+            // 如果父元素有overflow属性且不是visible，计算遮挡程度
+            if ((overflow !== 'visible' && overflow !== 'unset') ||
+                (overflowX !== 'visible' && overflowX !== 'unset') ||
+                (overflowY !== 'visible' && overflowY !== 'unset')) {
+                
+                const parentRect = parent.getBoundingClientRect();
+                
+                // 计算每个方向超出父元素的程度
+                const leftOverflow = Math.max(0, parentRect.left - elementRect.left);
+                const rightOverflow = Math.max(0, elementRect.right - parentRect.right);
+                const topOverflow = Math.max(0, parentRect.top - elementRect.top);
+                const bottomOverflow = Math.max(0, elementRect.bottom - parentRect.bottom);
+                
+                // 累加遮挡分数
+                occlusionScore += leftOverflow + rightOverflow + topOverflow + bottomOverflow;
+            }
+            
+            parent = parent.parentElement;
+        }
+        
+        return occlusionScore;
     }
 
     setTooltipOverflowInRepeater() {
         let simplebar_maskDiv = document.querySelector(`.${this.repeaterClassName} .simplebar-mask`);
         let simplebar_contentDiv = document.querySelector(`.${this.repeaterClassName} .simplebar-mask .simplebar-content`);
+        if (simplebar_maskDiv == null || simplebar_contentDiv == null) {
+            return false;
+        }
         simplebar_maskDiv.style.setProperty('overflow', 'visible', 'important');
         //simplebar_contentDiv.style.setProperty('overflow', 'visible', 'important');
 
@@ -223,6 +508,7 @@ class TooltipCommand extends Forguncy.Plugin.CommandBase {
         style.appendChild(change);
 
         simplebar_contentDiv.appendChild(style);
+        return true;
     }
 
     setTooltipPosition(tooltip) {
